@@ -1,0 +1,20 @@
+---
+layout: page
+title: Blog
+icon: fa-coffee
+order: 3
+---
+
+{% for d in site.year %}
+  <h3> {{ d }} </h3>
+  {% for category in site.categories %}
+    {% if category[0] == d %}
+      <ul>
+      {% for post in category[1] %}
+        <li><a href="{{ post.url }}">{{ post.title }}</a></li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+  {% endfor %}
+{% endfor %}
+
