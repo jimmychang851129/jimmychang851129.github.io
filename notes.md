@@ -6,12 +6,18 @@ order: 2
 ---
 
 {% for category in site.categories %}
-{%- if category[0] != 'Daily' -%}
-  <h3>{{ category[0] }}</h3>
+ {% assign total = 0 %}
+  {% for post in category[1] %}
+     {% if post.tags[0] != "Daily" %}
+      {% assign total = total | plus: 1 %}
+     {% endif %}
+  {% endfor %}
+ {% unless total == 0 %}
+   <h3>{{ category[0] }}</h3>
   <ul>
     {% for post in category[1] %}
-      <li><a href="{{ post.url }}">{{ post.title }}</a></li>
+      <li><a href="{{ post.url }}">{{ post.title }} {{post.tags}}</a></li>
     {% endfor %}
   </ul>
-  {%- endif -%}
+  {% endunless %}
 {% endfor %}
