@@ -2,7 +2,7 @@
 layout: post
 title:  "Linear Regression and Grandien Descent"
 date:   2020-05-03 21:44:00
-categories: Machine Learning
+categories: Machine-Learning
 tags: Course
 ---
 
