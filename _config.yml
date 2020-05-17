@@ -63,5 +63,10 @@ google_analytics:
 #remote_theme: jimmychang851129/jekyll-theme-prologue
 collections: [sections]
 
+year:
+  - "2020"
+  - "2019"
+  - "2018"
+
 plugins:
   - jemoji
