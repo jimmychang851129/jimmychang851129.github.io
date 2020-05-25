@@ -53,7 +53,7 @@ tags: Course
     2. **Adagrad** : $$w^{t+1} = w^t - \frac{L^t}{\gamma^t}g^t$$
         - $$w^{t}$$:第t次gradiant descent後的weights
         - $$L^{t}$$:第t次gradiant descent後的Learning rate
-        - $$\gamma$:之前所有次gradiant出來的值的root mean square
+        - $$\gamma$$:之前所有次gradiant出來的值的root mean square
         - $$g^t$$:第t次算出來的gradiant值， $$g= \frac{dL(W^t)}{dW}$$
         - 即Loss function(L)在帶入參數(w)後對各個weights的偏微分
 
