@@ -2,7 +2,7 @@
 layout: post
 title:  "Discrete Math"
 date:   2019-04-30 21:44:00
-categories: Discrete-Math
+categories: Cryptogrpahy
 tags: Course
 ---
 
