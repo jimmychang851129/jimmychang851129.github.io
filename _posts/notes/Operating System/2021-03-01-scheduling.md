@@ -2,7 +2,7 @@
 layout: post
 title:  "CPU Scheduling"
 date:   2021-03-01 21:44:00
-categories: Operating System
+categories: Operating-System
 tags: Course
 ---
 
