@@ -246,3 +246,28 @@ client不用知道iterator implement的細節就可以traverse 各種strcuture. 
 #### 結果
 
 大物件能夠自由地新增小零件而不用修改到大物件的method. 小物件只要implement interface就可以簡單被大物件compose
+
+### Adaptor Pattern
+
+#### 簡介
+
+用於當我一個物件或資料要給不同的service或class來處理, 而這些class又吃不同的資料型態當成input,因此變成每次有一個新的service或object, 我就要宣告並實作各種不同的資料轉換格式, 才能讓資料給不同的service處理. 會變得非常不scalable, 不相容, 也常常要改object或者service的code.
+
+Adapter就是定義一個class來負責資料的轉移,他會有不同的method能夠把資料轉成另一個形態再去呼叫service, 因此新的格式只要implement adapter的interface就可以擴充新的格式的轉換, 然後service也可以因此不用修改的去跟新的資料格式互動, 新的adapter會直接hold service.
+
+Object Adaptor, 圖中表示adapter主要是implement adapter的interface然後composite(hold) service, 這個adapter會實作一個資料轉換的method,把它轉成service看得懂的資料後在使用adapter hold住的service instance的method來得到結果, 所以adapter是implement interface然後hold service
+
+![](/assets/images/notes/DesignPattern/16.png)
+
+Class Adaptor,  adapter同時implement adapter跟service這兩個class, 之後這樣做出來的adapter會同時有interface轉換的功能,也會有service的method<br />
+但java沒辦法multiple inheritance可能要改成interface implement的形式
+
+![](/assets/images/notes/DesignPattern/17.png)
+
+#### 目的
+
+將一個interface或data type轉換成另一個interface供應其他service使用, 因為每個service可能input的class type不一樣, 所以資料要做轉換後才能給另一個service用
+
+#### 結果
+
+一個object能夠透過adaptor轉換讓不同的service或class使用
