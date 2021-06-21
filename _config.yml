@@ -69,3 +69,5 @@ year:
   - "2019"
   - "2018"
 
+plugins:
+  - jemoji
