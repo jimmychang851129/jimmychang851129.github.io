@@ -172,12 +172,11 @@ Hardware solution, 前面兩個Software-based solution就是利用軟體trap到V
 
 #### 優點
 
-VM可以直接用自己的OS上的device driver來連接Physical device, 不用額外實做模擬的device
+VM可以直接用自己的OS上的device driver來連接Physical device, 不用額外實做模擬的device. 可以大幅減少VM_EXIT跳到VMM處理的狀況, 大幅提升效率.
 
 #### IOMMU
 
 - 幫助device passthrough的security
-- Single Root IO(SRIOV)幫助scalability
 - MMU: 管控process能access的Memory範圍, 透過Page table
 - IOMMU就是類似機制, device只能存取特定範圍的Memory (intel: VT-d, AMD: IOvirt, ARM: SMMU)
 - 把IO virtual address(IOVA)轉換成hpa
@@ -198,3 +197,69 @@ address space問題:<br />
 下圖做一個Memory access, IO memory access在有無VM的狀況下的流程,1D代表一層,2D代表兩層.  最左邊圖是沒有VM的狀況, 只有一層page table直接map到phydcal memory. 中間圖代表IOMMU VM直接把IO device address從gpa map到hpa, 是可以防止device access 不該存取的hpa, 但問題點是device可以access VM的任意memory(因為直接map到hpa), 所以本身IOMMU也要兩層, 讓device在VM裡面也不能隨便讀取hpa.
 
 ![](/assets/images/notes/virtualmachine/2-8.png)
+
+#### SRIOV
+
+- Hardware 通常只能support一定數量的Physical devices, 當VM多時,硬體就沒辦法support這麼多VM instance存取IO
+- Single Root IO(SRIOV)幫助scalability(讓hardware能夠support很多VM,讓很多VM有直接access hardware的感覺, self-virtualize)
+- 延伸PCIe, SRIOV device能夠讓software看起來像是這個Device有很多個instance, 所以每個VM instance都能夠直接存取的感覺, 所以SRIOV device是hardware level的Multiplexing, 有點像vCPU的概念
+- VMM跟SRIOV device透過Physical Function做溝通, VM透過Virtual Function跟physical device做溝通, 所以VM跟Virtual Function能夠用DMA做溝通, 所以VM做某些physical devie的access時不用VMM介入
+- Physical Function(PF): 真實在hardware上跑的function, PCIe function, 有自己的configuration space
+- Virtual Function(VF): Physical Function透過hardware虛擬話技術把它變成多個Virtual Function, VM透過Virtual Function操控device. Host software(OS,VMM)可以allocate, deallocate, configure VF. 功能相對PF侷限,因為要避免VF影響到Physical interface, 例如VF不會有power management這些功能把Device shut down.
+
+![](/assets/images/notes/virtualmachine/2-9.png)
+
+##### VT-x Interrupt Support
+
+hardware IO virtualization能夠減少VM_EXIT次數, 但interrupt仍然是整個流程的一個overhead
+
+VMCS存guest的Interrupt Descriptor Table Register(IDTR), 所以context switch到VM時就會連同這個一起load進去. VMM會把VMCS裡的external-interrupt exiting bit設成1, 所有physical interrupt(Hardware issued)會先trap到VMM,VMM在用virtual interrupt給VM(確保VMM有VM的full control)
+
+在intel VT-x下的VM interrupt handle流程如下圖:<br />
+在VM執行時假設Physical Device發了一個interrupt, VM會先VM_EXIT到VMM來handle這個interrupt, VMM做完後會發EOI告訴hardware Exception處理完了,然後在inject interrupt(virtual interrupt)給VM, VM做完後一樣會發EOI給VMM(這裡又要VM_EXIT), VMM就會根據VM的EOI來update hardware state和Virtual Interrupt Controller state, 最後再回VM繼續執行. 整個流程有兩個VM_EXIT
+
+![](/assets/images/notes/virtualmachine/2-10.png)
+
+EOI register: intel新版的interrupt controller(x2APIC)提供這個暫存器讓VM直接對這個register做修改就好, 不用再VM_EXIT把EOI資訊傳給VMM (原本是因為EOI要把資訊傳給virtualized的LAPIC, interrupt controller,所以VM要用MMIO instruction來改寫LAPIC register告訴EOI, MMIO是privileged instruction)
+
+Exitless Interrupts(ELI): trap到VMM的interrupt也減少(第一次VM_EXIT, interrupt要傳給VMM保證VMM可以管控VM). 這個方法讓VM直接handle passthrough physical device的interrupt. 相關的實作如Intel VT-d posted interrupt, AMD Advanced Virtual Interrupt Controller(AVIC), 可以在根據功能分為CPU posted interrupt, IOMMU posted interrupt .
+
+### VMM Implementations
+
+#### 歷史
+
+1. 早期是single-core的大型電腦為了能夠share resource給multi-users, 所以有VMM來管理各個使用者的使用(Resrouce management & Isolation)
+2. Multi-core的環境出現, 早期OS的設計不容易在這種環境下很好的運行(早期single-core可能比較沒有lock之類的問題或者Numa問題, non-uniform memory access, UMA代表每個CPU存取記憶體的bandwidth,latency都一樣,或者共用Bus, 這樣會有多個CPU競爭相同一塊Memory access的performance問題).
+
+NUMA: 把Memory分區塊分給個別CPU, CPU access自己local memory比較快, 但access其他地方memory比較慢, 這樣CPU就可以把自己需要常用的資料放在local memory端, 不常用的放在遠的Memory區塊, 更有效率的利用記憶體跟Bus的傳輸.
+
+![](/assets/images/notes/virtualmachine/2-11.png)
+
+#### Disco
+
+在Multi-core(Multi-threaded, shared memory),NUMA狀況下再MIPS運行的一個VMM, support Numa, 跑不同OS, 更好的VM fault containment. 也提供SCSI virtual disk的abstraction給VM, 或者模擬Network devices給VM, Disco VMM類似Gateway能夠幫助各個VM透過Virtual NIC互相傳遞訊息.
+
+基本上所有虛擬化問題都有軟體方法解決, Virtual CPU就是用Data structure存CPU的狀態, VM OS kernel的exception(page fault, system call...)都是先傳給Disco再做處理, Interrupt也是Disco 先處理再inject給VM. 關於Memory的虛擬化, MIPS的架構Hardware可以透過TLB來做virtual memory到physical memory的translation. Guest VM的TLB會把gva轉成gpa, gpa再透過Disco上的pmap這個自己記錄的data structure轉成hpa, Disco的TLB則是存gva到hpa. Disco是把VM每次的Memory access都trap到Disco的pmap上做更新, 所以只要maintain pmap即可, 而不用像SPT要maintain兩個table(SPT跟GPT).
+
+Challenges:<br />
+- Trap & Emulate (因為Disco那時還沒有Hardware Support), 但Disco提供一些Extension來加速某些常見的Kernel operation, 像是把某些Sensitive instruction替換成load/store, 就不用trap了(Paravirtualization, 把某些CPU instruction對於暫存器的存取改成memory load/store) 
+- Handle VM IO access
+- Resource Management: VMM沒辦法像OS直接handle, 看到各個process(VM space process VMM看不到)
+- Communication & Sharing: 不同VM file sharing或者Communicate(Disco support shared Memory-based IPC)
+
+#### Xen
+
+另一種VMM實作, Type-1 Hypervisor(跑在bare metal上), 一樣有很多Software-based的方法(那時沒有硬體虛擬化support), 目標再提升Security, performance的部分和更多的functionality(那時OS有更多功能,XP之類的)
+
+Disco, VMWare ESX, modern VMM都是Full Virtualization, 跑VM都不用修改guest OS就可以架起來, Xen是Paravirtualization, guest OS需要修改VMM才能跑起來VM, Xen提供一個similar but not identical的hardware interface給VM用(改良版的hardware interface(? 提高虛擬化performance).
+
+
+VM可以跟Xen註冊自己的Exception handler, 讓VM的Exception, interrupt能夠更快處理. 記憶體方面有support x86 segment跟paging, Xen直接提供API給guest VM來修改Page Table(不是NPT或者SPT), 依樣這種作法只要再VMM maintain一套page table就好, VM要修改時就呼叫API來教VMM幫忙修改Page Table. Device IO提供Paravirtualize的interface, 透過類似ring buffer來async的傳遞資料
+
+Domain0 VM是管理層面較高的VM, admin可以透過Domain0 VM使用Hypercalls(跟Xen溝通的API)去跟Xen溝通來控制其他guest VM, 而溝通方式是用event方式(可以async傳遞資料)
+
+記憶體實作方式基本上是用static partition, VM分到一塊記憶體然後自己在這塊記憶體上create page table, 然後每次修改page table
+
+![](/assets/images/notes/virtualmachine/2-12.png)
+
+在有hardware support的狀況下, Xen是跑在Ring 0(最底層, 因為他deisgn是不需要hardware support, 但要掌握hardware resource, 就要跑在Ring0, 然後Guest OS跑在Ring 1, Gueset App跑在Ring 3)

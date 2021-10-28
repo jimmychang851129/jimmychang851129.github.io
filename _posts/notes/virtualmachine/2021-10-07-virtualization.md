@@ -168,6 +168,21 @@ Intel VT-x的虛擬化技術
   - control system software(OS,VMM,firmware)
   - 用MSR這個instruction存取這些資訊
 
+### 統整
+
+#### CPU Virtualization
+
+- Resource Management
+- time-sharing(VM間的Context Switch)
+
+#### ISA Virtualization
+
+- 保證VMM可以在這個新的CPU架構下以最高權限運行
+- With Hardware Support
+  - 用CPU自己的方式來deprivilege這些VM
+- Without Hardware support
+  - VM跑在User space, VMM跑在kernel space, 每次VM要跑privileged instruction就要trap, 所有問題都要用software trap & Emulate來處理. 例如VM執行power off, 實際上要做的不是真的在VMM執行這個指令, 而是VMM去修改VMCS的資料, 紀錄VM現在是power off
+
 ### Memory Virtualization
 
 關於Virtual Memory的部分講解可以先參考一下我關於Memory, Virtual Memory的posts. 這部分會更詳細的說明VMM如何透過硬體或軟體的解法來解決多個VM在memory端操作的問題. 基本上原本的Virtual Memory機制就已經能防護在同個OS下不同process存取記憶體的問題, 這裡要探討的是在VMM中不同VM如何存取硬體的Memory資源, 會更複雜在於VM本身自己內部也有自己的Processes和Virtual Memory, 而這個跟VMM或者Host的Virtual Address Space不同, 所以需要額外的Mapping機制, 但又要避免過多的Page table導致很多空間或時間的浪費, 而且要處理VM裡user space, kernel space不同process存取記憶體的權限.
