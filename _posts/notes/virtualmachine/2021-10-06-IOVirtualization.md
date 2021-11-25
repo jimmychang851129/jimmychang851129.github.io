@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  I/O Virtualization
-date:   2021-10-07 21:44:00
+date:   2021-10-06 21:44:00
 categories: VirtualMachine
 tags: Course
 ---
@@ -90,7 +90,7 @@ PCIe一個特色是可以更有效率發送Interrupt給CPU, 可以透過Message 
 
 ### IO Emulation
 
-VMM透過IO interposition的方法模擬出Virtual Device和介面跟VM溝通, 透過trap & emulate trap MMIO, PIO operation到VMM. trap的作法是把MMIO, 要access的memory在NPT unmap, 這樣就會trigger Page fault到VMM, VMM再來看是因為存取device IO還是就單純是非法記憶體存取. PIO則是可以在VMCS設定每次呼叫就trap, 缺點就是page granularity就是4K, 有點大. VMM除了模擬hardware行為, 也要模擬hardware發送interrupt給guestOS
+VMM透過IO interposition的方法模擬出Virtual Device和介面跟VM溝通, 透過trap & emulate trap MMIO, PIO operation到VMM. trap的作法是把MMIO, 要access的memory在NPT unmap, 這樣mmio存取device記憶體就會trigger Page fault到VMM, VMM再來看是因為存取device IO還是就單純是非法記憶體存取. PIO則是可以在VMCS設定每次呼叫就trap, 缺點就是page granularity就是4K, 有點大. VMM除了模擬hardware行為, 也要模擬hardware發送interrupt給guestOS, 例如r/w complete之類的
 
 #### Interrupt流程
 
@@ -103,7 +103,7 @@ VMM要做的就是模擬這些CPU system mode的切換, context switch的部分
 #### Interrupt Injection
 
 VMM software soltuion to interrupt simulation.<br />
-hardware發送interrupt不能直接給VM處理, 這樣VMM沒有辦法做VM的全權管控, 例如Interrupt跑完Program counter跳掉或者VM直接掛掉, 這些事情VMM會變得沒辦法插手. 因此Interrupt Injection的困難點就在於要保持VMM在這種情況下仍能掌控VM
+hardware發送interrupt不能直接給VM處理, 這樣VMM沒有辦法做VM的全權管控, 例如Interrupt跑完Program counter跳掉或者VM直接掛掉, 這些事情VMM會變得沒辦法插手. 因此Interrupt Injection的困難點就在於要保持VMM在這種情況下仍能掌控VM. 而且VMM也要模擬hardware status(向上面提到的interrupt也要注意register的儲存, interrupt controller的enable/disable)
 
 所以變成Hardware發送interrupt會被trap到VMM, VMM再告知VM有虛擬的interrupt
 
@@ -141,13 +141,13 @@ IO Emulation performance overhead太大(不斷cpu user/kernel mode切換), 另�
 - Guest要提供自己的driver(paravirtualization), 所以Guest要自己的console, block, network IO driver, 然後qemu就會有對應的介面能夠和driver做溝通
 - 有virtqueue(一種ring buffer)提升效能,VMM,VM能夠透過ring buffer交換資料
 - 而且最重要的是能夠降低interrupt跟VM_EXIT的次數來提升效能, VM會把data 加一些Descriptor放到virtqueue, VMM, VM可以透過這樣來存取data.
-- virtqueue也提供一些指令讓VM呼叫來通知VMM (e.g. virtqueue_kick)
+- virtqueue也提供一些hypercall指令讓VM呼叫來通知VMM (e.g. virtqueue_kick)
 - virtqueue也支援不同模式(no_interrupt,no_notify), VM可以告訴VMM目前virtqueue狀態, 降低VM_EXIT發生的次數.
 
 ![](/assets/images/notes/virtualmachine/2-4.png)
 
 
-Guest driver 跟Qemu的device interface都能存取一塊shared memory,傳遞資料不用guest io driver copy資料傳到qemu io driver來處理. 其中以下圖為例, device的control, data plan都在qemu裡, 所以data plan存取就用那塊shared memory, 不用exit. 但control plan存取如果真的要拿到physical device的值就要trap到kvm, 然後一樣qemu透過system call跟kvm溝通, 最後結果在傳回給qemu的virtio-net device. 這樣就能減少VM_EXIT的次數
+Guest driver 跟Qemu的device interface都能存取一塊shared memory,傳遞或存取資料不用執行那個acess指令時還要從guest VM的 io driver trap到 kvm然後再到qemu的emulated device來處理, 而是either guest VM或者qemu device能夠直接存取那塊shared memory來得到值, 例如emulated device已經把資料放到shared memory, guest VM要取得device資料時就不用trap到kvm在從kvm跑到qemu device拿資料. 其中以下圖為例, device的control, data plan都在qemu裡, 所以data plan存取就用那塊shared memory, 不用exit. 但control plan存取如果真的要拿到physical device的值就要trap到kvm, 然後一樣qemu透過system call跟kvm溝通, 最後結果在傳回給qemu的virtio-net device. 這樣就能減少VM_EXIT的次數
 
 IO的data plane & Control plane:<br />
 - Data plane: data傳輸方法(PCI)
@@ -188,13 +188,15 @@ address space問題:<br />
 
 ###### IOMMU for VT-d
 
+IOMMU在intel VT-d的實作上包含DMAR, IR這兩個部份
+
 - DMA mapping engine(DMAR): address retranslation(page table, IOVA->gpa->hpa)
 - Interrupt remapping engine(IR): VM可能會有自己的Interrupt number, number不見得跟host上一樣.
 - VT-D的page table也是Multi-layer, 要walk數個page table才走到hpa
 - VMM要設定讓VM透過DMA access memory時都要到IOMMU轉換, VMM透過IOMMU page table mapping來限制記憶體存取權限然後把gpa轉成hpa
-- VMM在IOMMU的page table一開始就會把所有address建立好,避免page fault
+- VMM在IOMMU的page table一開始就會把所有address建立好,避免page fault(所以IOMMU table並沒有demand paging的機制), 因為IO通常資料比較緊急, page fault可能會導致IO data loss
 
-下圖做一個Memory access, IO memory access在有無VM的狀況下的流程,1D代表一層,2D代表兩層.  最左邊圖是沒有VM的狀況, 只有一層page table直接map到phydcal memory. 中間圖代表IOMMU VM直接把IO device address從gpa map到hpa, 是可以防止device access 不該存取的hpa, 但問題點是device可以access VM的任意memory(因為直接map到hpa), 所以本身IOMMU也要兩層, 讓device在VM裡面也不能隨便讀取hpa.
+下圖做一個Memory access, IO memory access在有無VM的狀況下的流程,1D代表一層,2D代表兩層.  最左邊圖是沒有VM的狀況, 只有一層page table直接map到physical memory. 中間圖代表IOMMU VM直接把IO device address從gpa map到hpa, 是可以防止device access 不該存取的hpa, 但問題點是device可以access VM的任意memory(因為直接map到hpa), 所以本身IOMMU也要兩層, 讓device在VM裡面也不能隨便讀取hpa.
 
 ![](/assets/images/notes/virtualmachine/2-8.png)
 
@@ -209,7 +211,11 @@ address space問題:<br />
 
 ![](/assets/images/notes/virtualmachine/2-9.png)
 
-##### VT-x Interrupt Support
+### Interrupt handling
+
+IOMMU和SRIOV等等硬體solution雖然貴而且不是每個硬體都有, 但是已經能大幅減少VM_Exit的次數 提升IO access的效率. 但問題是Interrupt的VM_Exit次數仍居高不下
+
+#### VT-x Interrupt Support
 
 hardware IO virtualization能夠減少VM_EXIT次數, 但interrupt仍然是整個流程的一個overhead
 
@@ -220,9 +226,20 @@ VMCS存guest的Interrupt Descriptor Table Register(IDTR), 所以context switch�
 
 ![](/assets/images/notes/virtualmachine/2-10.png)
 
-EOI register: intel新版的interrupt controller(x2APIC)提供這個暫存器讓VM直接對這個register做修改就好, 不用再VM_EXIT把EOI資訊傳給VMM (原本是因為EOI要把資訊傳給virtualized的LAPIC, interrupt controller,所以VM要用MMIO instruction來改寫LAPIC register告訴EOI, MMIO是privileged instruction)
+EOI register: intel新版的interrupt controller(x2APIC)提供這個暫存器讓VM直接對這個register做修改來表示是否處理完Interrupt(EOI), 但本身修改這個register需要使用MMIO的privilege instruction, 所以修改EOI register會有trap的問題
 
-Exitless Interrupts(ELI): trap到VMM的interrupt也減少(第一次VM_EXIT, interrupt要傳給VMM保證VMM可以管控VM). 這個方法讓VM直接handle passthrough physical device的interrupt. 相關的實作如Intel VT-d posted interrupt, AMD Advanced Virtual Interrupt Controller(AVIC), 可以在根據功能分為CPU posted interrupt, IOMMU posted interrupt .
+上述流程一個hardware interrupt要兩次VM_Exit cost太高, 所以X2APIC就是可以讓VM透過MSR來修改EOI register, VMM可以透過VMCS來設定執行MSR時是否要trap
+
+Exitless Interrupts(ELI): trap到VMM的interrupt也減少(第一次VM_EXIT, interrupt要傳給VMM保證VMM可以管控VM). 這個方法讓VM直接handle passthrough physical device的interrupt而不用先trap到VMM做處理在發virtual interrupt. 相關的實作如Intel VT-d posted interrupt, AMD Advanced Virtual Interrupt Controller(AVIC), 可以在根據功能分為CPU posted interrupt, IOMMU posted interrupt .
+
+### 總結
+
+| Virtual IO model                    | Emulation | Paravirtualization | Device Assignment |
+| ----------------------------------- | --------- | ------------------ | ----------------- |
+| Portable(no host-specific software) | Yes       | No                 | Yes               |
+| Interposition                       | Yes       | Yes                | No                |
+| Performance                         | Worst     | Better             | Best              |
+
 
 ### VMM Implementations
 
@@ -231,15 +248,17 @@ Exitless Interrupts(ELI): trap到VMM的interrupt也減少(第一次VM_EXIT, inte
 1. 早期是single-core的大型電腦為了能夠share resource給multi-users, 所以有VMM來管理各個使用者的使用(Resrouce management & Isolation)
 2. Multi-core的環境出現, 早期OS的設計不容易在這種環境下很好的運行(早期single-core可能比較沒有lock之類的問題或者Numa問題, non-uniform memory access, UMA代表每個CPU存取記憶體的bandwidth,latency都一樣,或者共用Bus, 這樣會有多個CPU競爭相同一塊Memory access的performance問題).
 
-NUMA: 把Memory分區塊分給個別CPU, CPU access自己local memory比較快, 但access其他地方memory比較慢, 這樣CPU就可以把自己需要常用的資料放在local memory端, 不常用的放在遠的Memory區塊, 更有效率的利用記憶體跟Bus的傳輸.
+NUMA: 把Memory分區塊分給個別CPU, CPU access自己local memory比較快, 但access其他地方memory比較慢, 這樣CPU就可以把自己需要常用的資料放在local memory端, 不常用的放在遠的Memory區塊, 更有效率的利用記憶體跟Bus的傳輸. 在multiprocessor狀況下, UMA(Uniformed memory access)會導致如果多個CPU要使用同塊記憶體的話為了確保sync問題會要用lock, 一次只能一個CPU做讀寫, 那這樣勢必影響效能.
 
 ![](/assets/images/notes/virtualmachine/2-11.png)
 
 #### Disco
 
-在Multi-core(Multi-threaded, shared memory),NUMA狀況下再MIPS運行的一個VMM, support Numa, 跑不同OS, 更好的VM fault containment. 也提供SCSI virtual disk的abstraction給VM, 或者模擬Network devices給VM, Disco VMM類似Gateway能夠幫助各個VM透過Virtual NIC互相傳遞訊息.
+在Multi-core(Multi-threaded, shared memory),NUMA狀況下再MIPS運行的一個VMM(讓MIPS的privlege instruction會trap), Physical memory support Numa, 跑不同OS, 更好的VM fault containment. 也提供SCSI virtual disk的abstraction給VM, 或者模擬Network devices給VM, Disco VMM類似Gateway能夠幫助各個VM透過Virtual NIC互相傳遞訊息.
 
 基本上所有虛擬化問題都有軟體方法解決, Virtual CPU就是用Data structure存CPU的狀態, VM OS kernel的exception(page fault, system call...)都是先傳給Disco再做處理, Interrupt也是Disco 先處理再inject給VM. 關於Memory的虛擬化, MIPS的架構Hardware可以透過TLB來做virtual memory到physical memory的translation. Guest VM的TLB會把gva轉成gpa, gpa再透過Disco上的pmap這個自己記錄的data structure轉成hpa, Disco的TLB則是存gva到hpa. Disco是把VM每次的Memory access都trap到Disco的pmap上做更新, 所以只要maintain pmap即可, 而不用像SPT要maintain兩個table(SPT跟GPT).
+
+Disco, Xen都是Type I hypervisor(bare-metal hypervisor), 直接跑在硬體上
 
 Challenges:<br />
 - Trap & Emulate (因為Disco那時還沒有Hardware Support), 但Disco提供一些Extension來加速某些常見的Kernel operation, 像是把某些Sensitive instruction替換成load/store, 就不用trap了(Paravirtualization, 把某些CPU instruction對於暫存器的存取改成memory load/store) 
@@ -254,11 +273,11 @@ Challenges:<br />
 Disco, VMWare ESX, modern VMM都是Full Virtualization, 跑VM都不用修改guest OS就可以架起來, Xen是Paravirtualization, guest OS需要修改VMM才能跑起來VM, Xen提供一個similar but not identical的hardware interface給VM用(改良版的hardware interface(? 提高虛擬化performance).
 
 
-VM可以跟Xen註冊自己的Exception handler, 讓VM的Exception, interrupt能夠更快處理. 記憶體方面有support x86 segment跟paging, Xen直接提供API給guest VM來修改Page Table(不是NPT或者SPT), 依樣這種作法只要再VMM maintain一套page table就好, VM要修改時就呼叫API來教VMM幫忙修改Page Table. Device IO提供Paravirtualize的interface, 透過類似ring buffer來async的傳遞資料
+VM可以跟Xen註冊自己的Exception handler, 讓VM的Exception, interrupt能夠更快處理. 記憶體方面有support x86 segment跟paging, Xen直接提供API給guest VM來修改Page Table(不是NPT或者SPT), 依樣這種作法只要再VMM maintain一套page table就好, VM要修改時就呼叫API來教VMM幫忙修改Page Table. Device IO提供Paravirtualize的interface, 透過類似ring buffer來async的傳遞資料來減少VM_Exit次數.
 
-Domain0 VM是管理層面較高的VM, admin可以透過Domain0 VM使用Hypercalls(跟Xen溝通的API)去跟Xen溝通來控制其他guest VM, 而溝通方式是用event方式(可以async傳遞資料)
+Domain0 VM是管理層面較高的VM, admin可以透過Domain0 VM使用Hypercalls(跟Xen溝通的API)去跟Xen溝通來控制其他guest VM, 而溝通方式是用event方式(可以async傳遞資料). Xen Dom0的kernel有一個Native Driver跟Physical IO做互動達到IO虛擬化
 
-記憶體實作方式基本上是用static partition, VM分到一塊記憶體然後自己在這塊記憶體上create page table, 然後每次修改page table
+記憶體實作方式基本上是用static partition, VM分到一塊記憶體然後自己在這塊記憶體上create page table, 然後每次修改page table都會發hypercall到Xen讓VMM來修改PT(透過guest OS hypercall request), 但因為每次修改都要發hypercall代價有點高, 所以會使用batch update的方式來做(一次hypercall update PT實際上裡面有複數個PT update的指令)
 
 ![](/assets/images/notes/virtualmachine/2-12.png)
 

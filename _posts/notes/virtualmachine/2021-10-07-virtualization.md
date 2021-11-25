@@ -30,12 +30,12 @@ tags: Course
 - User-level ISA: 就是一般常見的ISA
 - System-level ISA: 包括一些scheduling, paging, memory allocation的ISA
 - System VM
-  - system level VM, 基本上不用OS也能跑, 實作在ISA interface(user-levle,system-level ISA)
+  - system level VM, 基本上不用OS也能跑, 實作在ISA interface(user-level,system-level ISA)
   - 相對於process VM, 他會提供一個完整的環境(support OS kernel, virtual Hardware), 可以在上面跑一個完整OS kernel
   - 例如vmware, virtualbox
   - 虛擬化種類分為: Full Virtualization 和 paraVirtualization
     - Full virtualization: OS可以直接跑在VMM上(iso檔之類的, 不用修改任何東西)
-    - Para Virtualization: OS要修改一些config或東西才能跑在VMM上
+    - Para Virtualization: guest OS要implement自己的device driver或者一些功能才能夠跟VMM做那部份的整合跟串接
 - Process VM:
   - user-level VM,基本上是跑在OS上的, 所以她的implement主要會是利用user-level ISA或者OS system call來存取硬體資源
   - 基本上很大部分他是一個OS上的process
@@ -57,8 +57,8 @@ VMM Design principle:<br />
 - Full Control: 要能夠完整掌握Hardware這樣才能isolate VM達到安全效果
 
 VMM 種類:<br />
-- Type 1 Hypervisor: VMM直接跑在physical hardware上, 基本上兼具OS的功能, 要做scheduling, machine bootstrapping(bring up VM), 資源分配. 他某方面來說也算是一種OS kernel, 可以在grub時選擇要boot Hypervisor
-- Type 2 Hypervisor: 跑在Host OS上,可以使用OS的library, 因為有完整的OS support和flexibility,所以能做到的虛擬化相對比Type 1多(Type 1直接跑在hardware上,不容易很好的support各種hardware features)
+- Type 1 Hypervisor: VMM直接跑在physical hardware上, 基本上兼具OS的功能, 要做scheduling, machine bootstrapping(bring up VM), 資源分配. 他某方面來說也算是一種OS kernel, 可以在grub時選擇要boot Hypervisor (Disco, Xen, Hyper-V, VMWare ESXi)
+- Type 2 Hypervisor: 跑在Host OS上,可以使用OS的library, 因為有完整的OS support和flexibility,所以能做到的虛擬化相對比Type 1多(Type 1直接跑在hardware上,不容易很好的support各種hardware features) (KVM)
 
 ### CPU Virtualization
 
@@ -73,11 +73,11 @@ VMM 種類:<br />
 1. arm, x86有不同的state, register type,所以register部分也要做mapping才能夠完整的執行指令
 2. Privileged instruction有些CPU指令是system mode, 一來是VMM要判斷該VM有沒有權限這麼做, 二來是就算能那麼做, 要如何保證isolation, 不影響其他VM, VMM的執行. 舉例來說, PSW, CR3, IDTR之類的指令屬於System ISA,會影響paging table, interrupt descriptor甚至scheduling的狀況, 如果這些register, 資源是VM, VMM共享,或者作用在physical CPU上, VM跑這些指令會影響到VMM.
 
-因此VM有一個條件式他不能修改會影響到其他人的hardware資源, 直覺想法是VMM跑在CPU system mode,然後VM都跑在CPU user mode
+因此VM有一個條件是他不能修改會影響到其他人的hardware資源, 直覺想法是VMM跑在CPU system mode,然後VM都跑在CPU user mode
 
 #### Instruction Set Properties
 
-- Privileged Instruction: 這些指令如果再user mode執行會trap, system mode不會(e.g CPU halt指令, LPSW,SPT(設定CPU timer之類的)
+- Privileged Instruction: 這些指令如果在user mode執行會trap, system mode不會(e.g CPU halt指令, LPSW,SPT(設定CPU timer之類的)
 - Control Sensitive Instruction: 會改變sytem config, resources的指令(SPT, LPSW,CR3)
 - Behavioral Sensitive Instruction: 同樣指令在不同config下會有不同行為(例如在system mode可以正常跑但usermode會自動變nop)
 - Sensitive instruction: 跟hardware互動的指令
@@ -86,7 +86,7 @@ VMM 種類:<br />
 
 ISA能夠被虛擬化有以下條件
 
-1. 如果sensitive instruction是privileged instruction的subset, 則可以建立VMM (ISA is virtualizable), 對non-privileged instruction,可以直接虛擬化執行, privilege instruction則利用trap-and-emulate來執行
+1. 如果sensitive instruction是privileged instruction的subset, 則可以建立VMM (ISA is virtualizable, 因為所有會影響hardware的instruction都會trap到system mode), 對non-privileged instruction,可以直接虛擬化執行, privilege instruction則利用trap-and-emulate來執行
 2. 如果ISA是可以虛擬化的,而且沒有time dependences的問題則可以nested-virtualize(虛擬機裡跑虛擬機)
 
 #### Trap-and-emulate
@@ -172,8 +172,8 @@ Intel VT-x的虛擬化技術
 
 #### CPU Virtualization
 
-- Resource Management
-- time-sharing(VM間的Context Switch)
+- virtual CPU map to physical cpu
+- time-sharing(VM間的Context Switch) 來做vCPU的resource management
 
 #### ISA Virtualization
 
@@ -247,13 +247,13 @@ hpa: host physical Address<br />
 
 Intel, AMD使用NPT,EPT的方法, 就是上圖的左邊流程, 主要是幫助gPA轉成hPA的部分, 因為一個VM只會有一個Physical address, 所以這種做法的好處就是每個VM只要maintain一種Mapping, 而不是per process. 基本上想法很單純, 就是每次要作操作都把gva先轉成gpa再透過EPT/NPT table轉成hpa作運算, 因為轉成hpa後才能夠交給MMU作page walk.
 
-具體而言, 例如今天要做一個gva到hpa的查詢, 首先會先要找到page directory(第一層page table), 作法就是先透過CR3配合gva得到gpa, 再透過EPT table把gpa轉成hpa, 這樣就可以知道VM Page Directory的實體位置了, 接著第二層依樣作法, walk page directory, 找到entry到下一層的page table時, 也是把結果透過EPT table從gpa轉成hpa, 這樣就可以知道第二層page table的hpa了, 然後這樣查找最終會找到gva的對應hpa.
+具體而言, 例如今天要做一個gva到hpa的查詢, 首先會先要找到page directory(第一層page table), 作法就是先透過CR3配合GPT得到gpa, 再透過EPT table把gpa轉成hpa, 這樣就可以知道VM Page Directory的實體位置了, 接著第二層依樣作法, walk page directory, 找到entry到下一層的page table時, 也是把結果透過EPT table從gpa轉成hpa, 這樣就可以知道第二層page table的hpa了, 然後這樣查找最終會找到gva的對應hpa.
 
 每次VMM initialize一個新的VM時, 就會allocate一個VM identifier(後面會提到,TLB用)跟NPT. 一開始NPT只含有少量entry(根據VM存取狀態, VMM不斷的NPT page fault, allocate hpa給gpa entry, demand paging)
 
 NPT,EPT page fault機制一樣, 就由VMM來處理, hardware發現有問題就發page fault signal給VMM,VMM再根據狀況allocate或者signal VM. 會發生page fault原因在於physical memory本身有swapping機制(即physical memory使用量過高時可能部分block會被放到swap)
 
-把gva轉成gpa的流程一樣是進行一個VM自己內部OS的page table look-up, 但問題點hardware只能看到hpa看不到gpa, gva轉成gpa的page table本身是存在gpa, 所以要先把GPT的gpa轉成hpa才能進行gva to gpa的page table lookup. 所以每次做gva to gpa轉換, 要先resolve GPT的hpa. 如果很不幸的gva到gpa是一個multi-layer page table, 那就是每層PT lookup到下層之前都要再一次把gpa轉成hpa (GPT會map到下一層的GPT, 但問題是因為都是在VM裡, 所以map到的address也是GPA, hardware要能去做下一層page table walk, 就要先把gpa轉成hpa). 更不幸的是gpa轉成hpa的NPT也不一定只有一層,而且通常也很多層, 因此假設GPT有n level, NPT有m level, 每找到一層的GPT需要m次memory access(NPT),總共n層, 所以需要n * m memory access, 外加每次找到GPT entry時的那次GPT access總共有n次, 而且gpa在轉換成hpa要另外再加m次, 所以總共 n * m + n + m.
+把gva轉成gpa的流程一樣是進行一個VM自己內部OS的page table look-up, 但問題點hardware只能看到hpa看不到gpa, gva轉成gpa的page table本身是存在gpa, 所以要先把GPT的gpa轉成hpa才能進行gva to gpa的page table lookup. 所以每次做gva to gpa轉換, 要先resolve GPT的hpa. 如果很不幸的gva到gpa是一個multi-layer page table, 那就是每層PT lookup到下層之前都要再一次把gpa轉成hpa (GPT會map到下一層的GPT, 但問題是因為都是在VM裡, 所以map到的address也是GPA, hardware要能去做下一層page table walk, 就要先把gpa轉成hpa). 更不幸的是gpa轉成hpa的NPT也不一定只有一層,而且通常也很多層, 因此假設GPT有n level, NPT有m level, 每找到一層的GPT需要m次memory access(NPT),總共n層, 所以需要n * m memory access, 外加每次找到GPT entry時的那次GPT access總共有n次, 而且最後得到的gpa在轉換成hpa要另外再加m次, 所以總共 n * m + n + m.
 
 ![](/assets/images/notes/virtualmachine/3.jpg)
 
@@ -266,7 +266,7 @@ NPT,EPT page fault機制一樣, 就由VMM來處理, hardware發現有問題就�
 3. Reduce memory footprint
 
 缺點:<br />
-1. 每次memory access會相對需要比較多的translation(一次translation要存取兩個page table(GTB,EPT),  對TLB cache miss部分尤其傷(一次gva轉成hpa要n*m+n+m個PTE access, 假設n為GPT layer, m為EPT layer), 但就有各種不同cache機制來讓這些translation變快(cache某些mapping), 或者使用大的Page size(4KB變2MB), 這樣PT layer可能會少一些.
+1. 每次做gva to hpa會相對需要比較多的translation(一次translation要存取兩個page table(GTB,EPT),  假設TLB是存gva to hpa的mapping, 對TLB cache miss部分尤其傷(一次gva轉成hpa要n*m+n+m個PTE access, 假設n為GPT layer, m為EPT layer), 但就有各種不同cache機制來讓這些translation變快(cache某些mapping), 或者使用大的Page size(4KB變2MB), 這樣PT layer可能會少一些.
 
 
 #### Shadow page table, nested Extended Page table
@@ -281,10 +281,10 @@ NPT,EPT page fault機制一樣, 就由VMM來處理, hardware發現有問題就�
 ### Architected Page Table and TLB
 
 - Hardware實做記憶體循址的機制
-- Architected TLB: 硬體只會看TLB, software只需要maintain TLB (直接va到pa的mapping, MIPS使用)
+- Architected TLB: 硬體只會看TLB, software只需要maintain TLB (透過TLP來直接va到pa的mapping, MIPS使用)
 - Architected PT: OS只能管理page table, 硬體管理TLB(caching, 放entry), OS只能透過某些system call來管理(flsuhTLB之類的), 但沒有辦法填TLB entry
 
-在TLB虛擬化就會是cache gva直接轉到hpa 或者gpa轉到hpa. 依樣的一個問題是hardware要能判斷TLB的entry分別屬於哪個VM的(不同VM可以有相同的pid, 所以單看pid不能判斷entry屬於哪個VM的), 一個做法就跟計組提到的每次vm switch就全flush, 另一個就是在家一個tag欄位存VMid, 所以TLB entry就會存VMid跟pid (Arm叫vmid, VT-x叫VPID), 然後VMM再透過一個特殊的暫存器存現在的VMid, 就知道現在在哪個vm下.
+在TLB虛擬化就會是cache gva直接轉到hpa 或者gpa轉到hpa. 一個問題是hardware要能判斷TLB的entry分別屬於哪個VM的(不同VM可以有相同的pid, 所以單看pid不能判斷entry屬於哪個VM的), 一個做法就跟計組提到的每次vm switch就全flush, 另一個就是在家一個tag欄位存VMid, 所以TLB entry就會存VMid跟pid (Arm叫vmid, VT-x叫VPID), 然後VMM再透過一個特殊的暫存器存現在的VMid, 就知道現在在哪個vm下.
 
 ### VM Bootstrapping
 
