@@ -24,8 +24,8 @@ I am currently an active member in [m1z0r3](https://ctftime.org/team/7694)
 
 ### Publications
 
-#### **[Know Your Victim: Tor Browser Setting Identification via Network Traffic Analysis](https://blog.licon.tw/about/)**
-C.-M. Chang, H.-C. Hsiao, T. Lynar, T. Mori<br />
+#### **[Know Your Victim: Tor Browser Setting Identification via Network Traffic Analysis](https://www.csie.ntu.edu.tw/~r08922004/webpage/2022_WWW.pdf)**
+**C.-M. Chang**, H.-C. Hsiao, T. Lynar, T. Mori<br />
 To appear in the Poster Track of The Web Conference (TheWebConf), April 2022.
 
 #### **[Keeping passwords in your pocket: Managing password locally with mobile fingerprint sensors](https://www.csie.ntu.edu.tw/~r08922004/webpage/2020_WWW.pdf)**(Poster)<br />
