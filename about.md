@@ -9,9 +9,6 @@ date: 2020-04-27
 
 ![](https://www.csie.ntu.edu.tw/~r08922004/webpage/profile.jpg)
 
-
-### A Graduate Student in Computer Science
-
 I am Chun-Ming Chang, 張均銘(Jimmy).<br /> I am currently a graduate student in both department of Computer Science, National Taiwan University(NTU) and department of Computer Science, Waseda University(WU).<br />
 
 ### Network Security
