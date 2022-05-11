@@ -21,7 +21,7 @@ I am currently an active member in [m1z0r3](https://ctftime.org/team/7694)
 
 ### Publications
 
-#### **[Know Your Victim: Tor Browser Setting Identification via Network Traffic Analysis](https://www.csie.ntu.edu.tw/~r08922004/webpage/2022_WWW.pdf)**
+#### **[Know Your Victim: Tor Browser Setting Identification via Network Traffic Analysis](https://www2022.thewebconf.org/PaperFiles/57.pdf)**
 **C.-M. Chang**, H.-C. Hsiao, T. Lynar, T. Mori<br />
 To appear in the Poster Track of The Web Conference (TheWebConf), April 2022.
 
