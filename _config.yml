@@ -31,7 +31,7 @@
 # You can create any custom variable you would like, and they will be accessible
 # in the templates via {{ site.myvariable }}.
 title: Chun-Ming Chang
-subtitle: 潰えぬ夢、燃え上がれ
+subtitle: 得之我幸, 不得我命
 description: >- # this means to ignore newlines until "baseurl:"
   This is the demo site for a Jekyll theme version of
   HTML5 UP's sleek, responsive site template Prologue.
@@ -56,7 +56,7 @@ slack_url:
 dribbble_url:
 
 # Google Analytics Tracking ID goes here:
-google_analytics:
+google_analytics: 'G-JV5E3S2E7S'
 
 # The following settings are NECESSARY for the Prologue theme to run:
 # theme: jekyll-theme-prologue
@@ -68,6 +68,7 @@ year:
   - "2021"
   - "2020"
   - "2019"
+  - "2018"
 
 plugins:
   - jemoji
