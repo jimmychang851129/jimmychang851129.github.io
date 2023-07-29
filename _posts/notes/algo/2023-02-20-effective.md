@@ -181,3 +181,14 @@ class XXX{
 ```
 
 要避免this建立一個shared_ptr,
+
+### string_view
+
+
+#### Conversion
+std::string和string_view彼此都可以explicit conversion, 但是string_view沒有implicit conversion轉成std::string
+
+```
+std::string_view a;
+std::string b = a; // compile error
+```
