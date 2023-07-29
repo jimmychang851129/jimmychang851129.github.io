@@ -113,6 +113,32 @@ unique_ptr的data type有分個別的T跟陣列的T[], 分別指到單一物件�
 
 此外unique_ptr可以自動轉成shared_ptr, 但反向不行，所以factor pattern的函示雖然回傳unique_ptr, 但可以用shared_ptr去接，那他就變成shared_ptr的形式, unique_ptr不接受raw pointer轉換成unique_ptr
 
+
+#### make_unique
+
+建立unique_ptr有以下兩種寫法
+
+```
+unique_ptr<int[]> ret(new int [5]);
+const auto ret = make_unique<int[]>(5);
+```
+
+使用make_unique來建造unique_ptr的原因<br />
+1. 語法上就不用使用new/delete這些語法
+2. 避免function parameter evaluation reorder後發生exception造成的memory leak(但在C++17這件事情被改善, 所以不是問題)
+3. exception safe
+
+```
+Exception safety sample:
+void func(Class *a, class *b){...}
+
+func(new Class(), new Class());
+如果在第二個物件new時發生exception接續執行, 那第一個new產生的物件並不會因此被delete, 就導致memory leak
+
+evaluation reorder
+f(unique_ptr(new int), g());  C++17以前沒有保證function parameter evaluate的順序, 假設執行順序為,先new一個int, 執行g(), 然後再裝到unique_ptr的容器, 那當執行g()發生exception離開function時, stack unwind不會清掉那個allocated的空間, 但如果用make_unique, stack unwinding一定會清掉該allocate的空間
+```
+
 #### shared_pointer
 
 一個shared_pointer的object含有兩個指標, 一個指向object, 一個指向shared_pointer的dynamic allocated的control block, 紀錄reference count, function object, allocator... . reference count紀錄有幾個shared_ptr指向該物件, 當ref_count變成0時就會把物件刪掉。
