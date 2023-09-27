@@ -89,6 +89,17 @@ C++新的功能讓指標更使用者友善，處理很多底層的記憶體處�
 
 Smart pointer也能確保該object不會被double free, 每條code path只會被free一次，而且遇到exception, early function return, 或break等等影響control flow的狀況仍會被刪除, 少數情況如exit, abort被呼叫, 跳出thread的primary function, 這些情況不會呼叫object的destructor。
 
+#### New & Delete
+
+C++提供了新的memory allocation的function, 跟C的malloc, free相比，除了allocate memory外，new和delete還會呼叫structure或class的constructor來做初始化，所以會比malloc, free來得方便，不用自己做data type casting跟initialization
+
+new本身包含三個步驟:<br />
+1. malloc一塊記憶體空間
+2. 呼叫物件的constructor來初始化物件
+3. 把這個空間assign給等號左邊的變數
+
+這會出現的問題是可能會因為優化導致reordering或者context switch的關係而做到一半被switch(這些operation不是atmoic),所以可能會發生switch時，已經有allocate空間且指標已經指向他，但還沒初始化，或者已經初始化完，但還沒把他assign給pointer
+
 #### unique_ptr
 
 unique_ptr只能move, 轉移物件的owner, 原本owner變成指向null, 不能copy。
