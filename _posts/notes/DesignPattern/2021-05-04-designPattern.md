@@ -6,6 +6,10 @@ categories: DesignPattern
 tags: Course
 ---
 
+### Reference
+
+[Ian's blog](https://ianjustin39.github.io/ianlife/design-pattern/observer-pattern/)
+
 ### Strategy Pattern
 
 對一個Object, 我們要根據狀況採用不同的演算法來對她做操作時, 我們這時可以用一個algorithm的abstract class encapsulate所有的algorithm. 因此Object只需要hold這個algorithm abstract class, 然後再依據輸入或者狀況set我們的algorithm成特定的演算法(注意, Object是hold algorithm這個data type 但我們是把他的subclass指定給這個變數), 這樣Object只需要call algorithm裡面的method 就會因為polymorphism的關係決定要執行的algorithm的細節.
@@ -20,21 +24,25 @@ tags: Course
 
 #### 簡介
 
-多個Object depend on a main Object, 當一個Object更改資料時, 要能夠讓其他Object上的資料也能夠更新. 所以我們有資料更新就要透過main object來update其他object的資料.
+**多個物件之間存在著一對多的依賴關係，當一個物件發生改變時，所有跟他有關的物件都會被通知且更新。**
+
+用途很廣, 例如youtube訂閱後, 當有新的人訂閱某個頻道後, 該頻道的訂閱者所看到的訂閱人數要+1, 或者各種因為改變而原本所有的observer都要跟著改變時.
+
+有一個main subject內有多個observer, 當一個observer發生改變時, 要能夠讓其他observer上的資料也能夠更新, 或者能夠被通知有其中一個observer做出改變. 所以我們有資料更新就要透過main subject來update其他observer的資料, 或者通知其他observer.
 
 #### 目的
 
-規劃一個1-many的關係, 所以當一個object的狀態改變, 其他所有有關聯的objects也都會被informed
+規劃一個1-many的關係, 所以當一個observer的狀態改變, 其他所有有關聯的observer也都會被informed
 
-大致上做法為, 首先用一個Abstract class encapsulate所有依賴main object的objects. 然後Abstract class會hold Main Object(所以所有的subclass也都會hold Main Object). 接著Main Object只要跟這個Abstract class互動就不用一一的跟每個object互動. 概念上是Main Object開一個list<abstract class>存所有的objects, 然後每次update就跑迴圈把每個objects內的Main Object data都修改. 
+大致上做法為, 首先用一個Abstract class encapsulate所有依賴Subject的observer. 然後Subject會hold abstract class(可能透過list,vector存observer list). Subject只要跟這個Abstract class互動就不用一一的跟每個observer互動. 概念上是Subject開一個list<abstract class>存所有的objects, 然後每次update就跑迴圈把Subject內的observer data都修改. 
 
 #### 結果
 
-讓開發者之後想要新增新的依附在main objects下的Objects很簡單, 因為loosely coupled, 而且資料也會update
+讓開發者之後想要新增新的依附在Subject下的observer很簡單, 因為loosely coupled, 而且資料也會update
 
 ![](/assets/images/notes/DesignPattern/2.png)
 
-實際用法如下圖, ConcreteSubjects就是Main Object, ConcreteObserver就是依賴Main Object的Object. 每次產生新的Observer就會attach到Subject下, 之後只要setState有更新, 所有observer資料都會一起更新
+實際用法如下圖, Subject就是application Data. 每次產生新的Observer (繼承Chart的subclass) 就會attach到Subject內的field下, 之後只要setState有更新, 所有observer資料都會一起更新
 
 ![](/assets/images/notes/DesignPattern/3.png)
 
@@ -42,13 +50,13 @@ tags: Course
 
 #### 簡介
 
-用於當每個Object有略微不同的功能或特性時(例如某Object有A,另一個Object只有B, 第三個Object有A,B,C). 這種狀況就可以用Decorator
+用於當每個Object有略微不同的功能或特性時. 例如遊戲中, 角色A有劍, 角色B有盾牌, 角色C有劍和盾牌. 這種狀況就可以用Decorator, 角色是component, 其他裝備部分是decorator.
 
 #### 目的
 
-可以動態Attach新的功能或特性(上述A,B,C)給原有的Object, 不用code寫死. 做法是把這些Components(A,B,C) abstract起來後繼承最大項的那個Interface, 所以Component A,B,C是一個abstract class,而這個abstract class是implement最上層那個Interface, 相反的, 其他Object(有不同的A,B,C feature)的就直接implement最上層那個Interface.
+可以動態Attach新的功能或特性(上述劍和盾牌)給原有的Object(角色), 不用code寫死. 做法是把這些Decorator(A,B,C) abstract起來(繼承一個abstract class, 例如叫做裝備)後,再繼承最大項的那個Interface, 所以Decorator A,B,C是裝備這個abstract class的實作,而這個abstract class是implement最上層那個Interface, 相反的, component(即角色, 有不同的A,B,C裝備)的就直接implement最上層那個Interface.
 
-這些A,B,C就是decorator, 也是一種Object, 動態產生然後可以依據需求Attach或Detach到Main Object
+這些A,B,C就是decorator, 也是一種Object, 可以在code裡面產生A,B,C這些裝備, 並且裝備會hold一個object(角色), 說明這個裝備屬於哪個角色的.
 
 這樣Call decorator的Concrete object時,是遞迴的call, 也就是Concrete Object(A,B,C)的method的implementation其實是call super.method(), 呼叫上層Interface的method.
 
@@ -58,7 +66,9 @@ tags: Course
 
 #### 結果
 
-view object能夠動態的attach,detach不同object,也可以隨時新增不同的component然後attach到view object, 只要他是implement decorator的interface即可
+Decorator(如viewObject, 或裝備)可以輕易新增種類, component(角色, visual component)也能輕易新增種類, 兩者是loosely coupled的而且也可以說明這個decorator屬於哪個component, 一個component也可以有多個decorator, 達到複雜的功能但很loosely coupled (擴充性高且彼此獨立).
+
+缺點是, 太多的decorator, component, 也會使code變得有些零散, 複雜.
 
 ### Factory Pattern
 

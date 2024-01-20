@@ -8,8 +8,9 @@ tags: Course
 
 ### Why Design Pattern
 
-我們把常見的遇到的問題跟對應的解法弄成一個既定的pattern. 一但遇到一樣的問題時可以套用一樣的設計方式來解決他<br />
-另外是我們根據這些principle, 之後的程式會更flexible也比較好擴充新的功能或object, 所以在設計時就應該要先確定那些component之後是可能會擴充或改變的
+程式碼在長久下來勢必會變的功能複雜, 會有許多的擴充以及維護的問題, 例如程式碼變多變複雜, 該如何做好擴充跟維護, 如果沒有套系統化的方式做這件事情想必會造成後續的維護或擴充困難, 因此design pattern的目的在於給予一個擴充的目標跟情境, 針對每種情境跟目標提供一個pattern來處理這問題.
+
+我們根據這些principle, 之後的程式會更flexible也比較好擴充新的功能或object, 所以在設計時就應該要先確定那些component之後是可能會擴充或改變的
 
 #### 描述一個Design Pattern
 
@@ -48,6 +49,9 @@ tags: Course
 
 每個class只做簡單的task, 不會同時做多個tasks, 然後class間是low dependency的, 也就是當我想要擴充其他class或者修改class的東西時, 不太會動到其他class的code, 也不用了解我需要使用到的object的細節, 所以是loosely coupled.
 
+High cohesion: 每個class只做少數的task, 不要做太多事情. 所以很專注做一件事就好<br />
+Loosly coupled: 每個class之間code dependency很小
+
 #### Inherit the most important and delegate the rest
 
 一個class如果同時要繼承兩個abstract class在java是不允許的, 而且這樣會變得容易有bug或者程式複雜(例如繼承多個class然後兩個parent class可能會有些地方互相衝突), 而且會讓程式的行為變得複雜(代表他不只是focus在單一的task上). 所以我們只inherit最重要那個class 剩下比較不重要的class但我們需要他的feature的話, 就使用delegation.
@@ -70,13 +74,14 @@ Composition特點在於我們只hold這個Object且呼叫他的function, 至於�
 
 #### Open-Close Principle
 
+Open for extension, close for modification.<br />
 Class能夠簡單的extends然後不會影響或修改到舊有的code, 通常代表就是要用一個abstract class, 要extends時就是寫一個新的class繼承他
 
 #### Dependency Inversion Principle
 
 讓high-level跟low-level components都作用在Abstract class上
 
-舉例而言, 當一個highlevel module同時會使用到多個LowerModule時, 或者這些LowerModule其實做的事情一樣只是因為condition不同時implementation細節稍微不同, 此時就可以把這些LowerModule弄一個Abstract class, 然後所有相關的LowerModule都繼承這個class, high-level module則是呼叫這個class就行. 這樣所有class都是透過這個abstract class作互動, high-level class也可以透過set class在呼叫abstract class的method來執行特定的事情
+舉例而言, 當一個high-level module同時會使用到多個Lower Module時, 或者這些LowerModule其實做的事情一樣只是因為condition不同時implementation細節稍微不同, 此時就可以把這些LowerModule弄一個Abstract class, 然後所有相關的LowerModule都繼承這個class, high-level module則是呼叫這個class就行. 這樣所有class都是透過這個abstract class作互動, high-level class也可以透過set class在呼叫abstract class的method來執行特定的事情
 
 ![](/assets/images/notes/DesignPattern/4.png)
 
