@@ -50,3 +50,43 @@ leave the code better than you found it.
 
 [twitter](https://twitter.com/mwaseemzakir/status/1770159698404364756)<br />
 Extreme Programming Explained
+
+
+#### Stick to Boring Architecture as long as Possible
+
+Reference:<br />
+[Stick to boring architecture for as long as possible.](https://addyo.substack.com/p/stick-to-boring-architecture-for)
+
+此文擷取至Addy Osnami的文章
+
+當我們在進行專案或者做某些改善時，總會想著套用最新最潮的東西來解決問題，可能是新的library, 新的tool, 新的architecture, 但要釐清這些東西究竟是**適合**這個問題還是只是潮而已。
+
+但作者認為其實很多時候那些歷久不衰的old, boring architecture才是真的經過千錘百鍊，許多改良以及測試過後的產物，比新的東西更適合被套用。
+
+**From Creativity to Value**<br />
+作者提出軟體的fix, enhance，所有的修改的核心價值是**能夠給user帶來價值**，因此不管是各種fix的優先程度以及創新想法，最終值不值得做都要回歸能帶給user多少價值，還是只是自己開心而已。 
+
+因此題外話是對proposal, 要有一個metric來模擬、衡量一個solution或者idea它能夠帶給user多少價值，到底能解決什麼問題，能夠帶來多大的效益，即便他可能帶來一些instability和加深learning curve跟code complexity.<br />
+效益可以是讓user更願意使用，可能是幫助user更快完成task，可能是減少user踩雷遇到bug的機會等等。
+
+作者建議：Begin your project with a solid foundation based on well-understood technology.
+
+一開始fix,或者開始做project時，可以先使用簡單，基礎的設計，再根據需求套用新的東西。因為在做的過程中就會開始知道具體會遇到哪些challenge，這時候就會有更好的理解到底該使用什麼tools, architecture來處理問題，或者針對這些特定的問題點來使用新的技術或tools處理，但整個架構本質來試boring but stable的architecture.
+
+
+### Code review guideline
+
+**function**<br />
+1. 定義清楚function的input/output
+ - 函式參數的type, range應該要在一定範圍, 超過應該要assert
+ - return值應該盡量避免magic number, -1, 0 之類的，可以使用std::optional回傳以示失敗
+ - return值可以的話ㄧ樣盡量定義清楚output值域，不合理的值assert
+2. 一個function盡量維持單一一個功能，不應該一個function做太多事，做太多事就切成另一個function
+3. 盡量避免使用global, static variable, 盡量讓function每次呼叫沒有side-effect
+
+**變數命名**
+1. 盡量有意義的命名, 避免像id, tmp這種命名
+2. 一個變數一個功能，也不應該橫跨太長的code
+3. 能宣告const盡量宣告const
+4. use smart pointer instead of pointer if possible
+5. 使用變數前，先assert確保他的值是如預期(例如non null, 非0等等)
