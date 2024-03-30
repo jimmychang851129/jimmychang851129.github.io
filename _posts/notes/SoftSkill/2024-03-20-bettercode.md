@@ -34,13 +34,25 @@ You Aren't Gonna Need It.  對於功能與需求，除非真的不得已，不�
 
 #### SOLID
 
-- Simplicity:
-    - 一個function, method只做一件事
-- Open-closed Principle: open for extension , close to modify
-    - 很容易擴充(即加新功能不用修改舊有的code)，但是本身內部核心是不太需要因為新功能修改的
-- Liskov Substitution
-- Interface Segregation
-- Dependency Injection
+**Simple Responsibility Principle**<br />
+一個function, method只做一件事<br />
+更精準來說: A module should have one, and only one, reason to change
+
+如果一個class, function有太多功能，常常導致coupling而有side effect或者不預期的flow, 結果, 也比較難修改
+
+**Open-closed Principle**<br />
+簡單而言就是加一層抽象，而根據這個抽象再有不同的實作細節，抽象層定好規範後，不論實作為何都要遵守這個抽象的規範(input,output)等等。但scalable意思是可以透過這個抽象層在建立新的物件來處理各種狀況，達到scalable。
+
+Reference: [深入淺出開放封閉原則 Open-Closed Principle](https://www.jyt0532.com/2020/03/24/dip/)
+
+**Liskov Substitution**
+**Interface Segregation**
+
+**Dependency Injection**<br />
+1. high-level的物件不應該依賴low-level物件的實作細節, 兩者都要depend抽象層
+2. Abstractions should not depend on details. Details should depend on abstractions.
+
+關於點1, 代表可能高層物件使用低層物件，會有的問題是當低層物件要scalable, 高層物件也要跟著一起動，**因為他depend, 直接使用低層物件的實體** ，如果要讓他低耦合，高層物件應該是depend一個abstract layer, 而低層物件根據這個abstraction實作，這樣比較容易根據狀況替換成另一個低層物件。
 
 #### Boy Scout Rule
 

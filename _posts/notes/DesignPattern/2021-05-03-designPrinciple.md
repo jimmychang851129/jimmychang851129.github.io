@@ -98,6 +98,29 @@ high-level component可以呼叫low-level component, 但反過來不行
 
 盡量不要在一個class的Method裡面new另一個Object,而是透過setter或constructor方式先把它存在class的private variable之類的, 透過另一個injector class/object來達到這件事. 一來能夠讓class focus在他真的需要完成的task上而不是要讓他負責更多的task(handle其他object的creation). 一來class的creation都交給原本那個class做的話,會很難知道是create class出錯還是我們現在這個Class的邏輯出錯(不容易debug), 而且也沒達到loosely coupled, 一但修改了created class的內容, create他的class可能也因此要動到)
 
-#### Extend functionality by sub-classing and composing its instances with existing one
+#### The Acyclic Dependencies Principle
 
+Reference: [細談元件耦合性](https://www.jyt0532.com/2020/03/27/coupling/)
+
+Allow no circles in the component dependency graph
+
+循環的dependency關係會讓code變得很難做修改，很容易有side effect, 牽一髮動全身
+
+當我們有一個function, component需要做修改的時候，沒有dependency graph我們需要考慮的callee component比較明確，只要看這幾個component是否受影響。
+
+但當dependency有循環時，就很難分析到底有哪些component會受影響，跟會受到怎麼樣的影響
+
+#### The Stable Dependencies Principle
+
+component, module盡量不要depend不穩定的module，不要去depend一個很難改動的東西，這樣後續會變得很難修改、擴充。
+
+穩定度定義在於它depend/使用了多少其他東西(以class可能就是他用了其他多少物件，以file就是他include多少header,使用多少function), 使用的function越少越穩定，depend外面的越多越不穩定。
+
+越不穩定的module意思是可能會因為他depend的module修改而受影響, 而這些module就不stable, 不應該被廣泛depends,使用。
+
+#### The Stable Abstraction Principle
+
+A component should be as abstract as it is stable.
+
+#### Extend functionality by sub-classing and composing its instances with existing one
 
