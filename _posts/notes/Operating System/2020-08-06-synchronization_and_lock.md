@@ -1,3 +1,11 @@
+---
+layout: post
+title:  "Synchronization"
+date:   2020-08-08 21:44:00
+categories: Operating-System
+tags: Course
+---
+
 ### Semaphore
 
 一種generalized的lock,有一個整數變數和兩個atmoic指令能夠update他的值. Semaphore的值代表他有的資源數目,當值變成0代表沒有資源了,這時在要資源(wait)就會block. 當資料用完會呼叫signal, 這時semaphore值會+1
@@ -77,3 +85,11 @@ while(!queue.empty()){
 
 Monitor不是thread, 所以它是mutual exclusive, 假設固定數量的wait signal, monitor會因為這些指令順序不同而有不同結果, 但semaphore不會(因為會記錄). 例如Monitor如果call signal但queue是空的, 那這個signal就浪費了.<br />
 Semaphore某方面來說會存目前資源的state,狀況, Monitor這種lock不會
+
+### Deadlock
+
+發生條件
+1. 資源是mutual exclusive
+2. 一個process hold住資源又想拿其他的
+3. 沒有人能把該process的資料free掉
+4. 
