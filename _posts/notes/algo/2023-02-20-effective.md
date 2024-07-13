@@ -167,3 +167,58 @@ class XXX{
 
 要避免this建立一個shared_ptr
 
+### Move Semantics
+
+Move constructor屬於default constructor之一，所以不用特別宣告, compiler會自動幫忙加一個進去，要自己寫的狀況為，使用了pointer然後希望對assign完後，右手邊的值設定回default value時才要自己寫move constructor。 container class(如STL, smart pointer)，他們都有自己實作的move constructor了，所以呼叫default move construcotr時，container class不用自己特別處理。
+
+```
+class Widget {
+    private:
+        int i{0};
+        std::string s{};
+        int *pi{nullptr};
+    public:
+        Widget& operator=(Widget &&w) {
+            i = std::move(w.i);
+            s = std::move(s.i);
+            std::swap(pi,w.pi)
+            delete w.pi;
+            w.pi = nullptr;
+        }
+        Widget(Widget &&w) noexcept:
+        i(std::move(w.i)),
+        s(std::move(s.i)),
+        pi(std::move(w.pi)){
+            w.pi = nullptr;
+        }
+}
+```
+
+切記在move constructor/assignment時，要盡量避免move完後還去讀寫右手邊的變數。理想上應該move完後，右手邊的直就不再使用，這樣才可以避免不必要的bug/crash產生。
+
+如果真的要自己寫，可以每個class member都寫std::move, 反正primitive type, 有沒有都沒差，但class就會有差，都加std::move可以保持一致性，而且可以確保以後class member更改type時(e.g. primitive type變成某種class wrapper)，move constructor不會出現不預期行為。
+
+切記move constructor要宣告成noexecpt, 原因在於有些STL member function (e.g. push_back), 他們是strong execption guarantee,  保證發生exception時，variable states不會改變。因此當move consturctor不保證no except時，以下的code並不會呼叫move constructor, 而是呼叫copy constructor
+
+```
+vector<T> v;
+T inst;
+v.push_back(std::move(inst));  // copy constructor called if "noexcept" is not specified in move constructor
+```
+
+#### std::move
+
+std::move實際上在做的事情是static cast, 把傳進來的參數cast成&&.<br />
+使用move operator時切記要另外處理、小心 確認不是self assignment
+
+#### Move assignment
+
+Move assignment跟move constructor不同處在於左手值在move assignment時，有一段機率
+
+
+#### 什麼時候compiler會加上move constructor
+
+1. copy operation和desturctor不是user-defined時 (user-defined指的是user有mention這個東西時, 所以=default, =delete也是user-defined)
+2. 
+
+C++ core guide:如果有在class內有自己宣告constructor (包含=default), copy constructor, destructor等等，其他的也都要補上 (rule of three, rule of five)，不然容易造成resource leak等等問題

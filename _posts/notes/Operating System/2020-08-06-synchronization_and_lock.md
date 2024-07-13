@@ -91,5 +91,5 @@ Semaphore某方面來說會存目前資源的state,狀況, Monitor這種lock不�
 發生條件
 1. 資源是mutual exclusive
 2. 一個process hold住資源又想拿其他的
-3. 沒有人能把該process的資料free掉
-4. 
+3. 資源只能被持有的process放棄掉 (No preemption)
+4. circular wait
