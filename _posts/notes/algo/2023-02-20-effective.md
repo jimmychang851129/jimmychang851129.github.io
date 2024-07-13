@@ -218,7 +218,8 @@ Move assignment跟move constructor不同處在於左手值在move assignment時�
 
 #### 什麼時候compiler會加上move constructor
 
-1. copy operation和desturctor不是user-defined時 (user-defined指的是user有mention這個東西時, 所以=default, =delete也是user-defined)
-2. 
+copy operation和desturctor不是user-defined時 (user-defined指的是user有mention這個東西時, 所以=default, =delete也是user-defined)
+
+順帶一提，如果有user-defined move operation, 就不會有compiler-generated copy operation(有move operation, user要自己寫copy operation)
 
 C++ core guide:如果有在class內有自己宣告constructor (包含=default), copy constructor, destructor等等，其他的也都要補上 (rule of three, rule of five)，不然容易造成resource leak等等問題
