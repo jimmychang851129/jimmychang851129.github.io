@@ -48,6 +48,12 @@ Reference: [深入淺出開放封閉原則 Open-Closed Principle](https://www.jy
 **Liskov Substitution**
 **Interface Segregation**
 
+應該去依賴你根本不會用到的東西，也就是說interface應該只定義所有實作的class會有的東西，如果只有部分class有的，那就應該建立一個新的interface,並且delegate出去，而不是讓此interface有這麼多的method.
+
+這樣會變成當時做的class變多時，我們只會看到這個class有很多的method (interface定義的)，但會不知道哪些真的有用，哪些事return null, 這樣對maintain會不方便，會不知道究竟是NYI還是本來就用不到。
+
+Highly cohesion, loosly coupled
+
 **Dependency Injection**<br />
 1. high-level的物件不應該依賴low-level物件的實作細節, 兩者都要depend抽象層
 2. Abstractions should not depend on details. Details should depend on abstractions.
