@@ -8,12 +8,23 @@ tags: Course
 
 ### 甚麼是Embedded System
 
+簡言之，就是一組特殊的hardware以及software組成的一個system，但有別於規格化、規模化的PC，他的硬體通常比較專門，並且需要專門的軟體來跑。
+
+舉例而言，一個主機板的SOC晶片(如BMC)，有著特殊的硬體以及複雜的功能，需要特別的硬體跟軟體(甚至很多時候，一個作業系統) 來達成他的功能。<br />
+硬體設備而言，肯定跟我們常見的PC很不同，他把flash, RAM, CPU等等架構都設計在單一晶片上。而且只是板子上的一個晶片，在硬體資源跟設計上肯定跟PC不同。<br />
+軟體上需要特定的device driver跟作業系統，因為功能可能複雜到需要一個作業系統配合軟體才能完成，但另一方面為支援硬體，也不見得每個版本linux kernel都可以用(例如firmware, device driver就需要特定的kernel版本後才跑得起來等等)。 
+因此，Embedded system的開發
+
 一個系統開發牽涉到硬體與軟體設計，而設計好的硬體後續則會有軟體來負責達成客戶的需求。硬體設計上要盡量能貼近需求，而剩下的則會由軟體來負責完成。
 
-通常嵌入式系統設計，因為目標硬體通常不像電腦有鍵盤可以做輸入或寫程式，更多時候是先在host system (e.g. 筆電、主機)上面做好程式開發、編譯，再透過傳輸、燒錄方式把執行檔傳到目標硬體上。<br />
+**開發方式**
+
+通常嵌入式系統設計，因為目標硬體通常不像電腦有鍵盤可以做輸入或寫程式，加上target device的資源可能少到無法做程式開發，更多時候是先在host system (e.g. 筆電、主機)上面做好程式開發、編譯，再透過傳輸、燒錄方式把執行檔傳到目標硬體上。<br />
 這之中就會牽涉到cross-compile，在host system上開發的程式必須要編譯成在目標硬體上可執行的執行檔。
 
 #### 如何bring-up一個baseboard
+
+bring-up代表讓該硬體晶片配合特製軟體能夠達到他預計的功能。
 
 因為程式主要開發還是在host system, 所以會需要<br />
 1. source-code level debugger
@@ -22,7 +33,7 @@ tags: Course
 在baseboard上需要安裝的東西<br />
 1. linux kernel & patch (patch除了bug fix外，也包含對應)
 2. root file system, 需要有root file system才能跑起Linux kernel
-3. loader
+3. bootloader
 4. debug agent (做embedded system上的debug), production不用
 5. target program
 
@@ -91,6 +102,10 @@ zImage: 壓縮過的image,必須再透過mkimage的binary把他轉成uImage
 RTOS裡面通常有sys library (e.g. libc), core kernel, BSP (board-specific package)
 
 BSP為pin腳, device driver, memory配置的Package, 每個不同硬體都會有自己的BSP，這樣才知道怎麼跟該硬體作互動。
+
+**crosstool-NG**<br />
+
+一個能夠產生cross-compile tool chain的tool
 
 ### BMC
 
