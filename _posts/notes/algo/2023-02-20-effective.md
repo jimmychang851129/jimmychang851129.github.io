@@ -200,6 +200,8 @@ class Widget {
 
 切記move constructor要宣告成noexecpt, 原因在於有些STL member function (e.g. push_back), 他們是strong execption guarantee,  保證發生exception時，variable states不會改變。因此當move consturctor不保證no except時，以下的code並不會呼叫move constructor, 而是呼叫copy constructor
 
+const的變數、物件是不movable的。
+
 ```
 vector<T> v;
 T inst;
@@ -223,3 +225,67 @@ copy operation和desturctor不是user-defined時 (user-defined指的是user有me
 順帶一提，如果有user-defined move operation, 就不會有compiler-generated copy operation(有move operation, user要自己寫copy operation)
 
 C++ core guide:如果有在class內有自己宣告constructor (包含=default), copy constructor, destructor等等，其他的也都要補上 (rule of three, rule of five)，不然容易造成resource leak等等問題
+
+### RVO NRVO
+
+在函式中，對於不複雜的return statement，compiler有一套優化方式可以把return值直接傳到caller。減少不必要的copy (copy elison)。
+
+```
+class1 func1() {
+    return class1();
+}
+
+class1 func2() {
+    auto a1 = class1();
+    return a1;
+}
+
+int main() {
+    auto f1 = func1();  // RVO
+    auto f2 = func2();  // NRVO
+}
+
+```
+
+以下參考影片的整理重點 
+
+1. 基本上主流compiler都有support RVO, NRVO。 而disable NRVO需要特殊的compile option才能disable
+2. 即便有move semantics來避免copy construct,  RVO還是來得比較快
+3. 對於return ternary operation，建議使用std::move把整個包起來，因為tenary operation只support RVO, 所以要NRVO的return方式要用std::move包起來改用move semantic
+4. return的variable, object type要跟function return type一樣才有RVO, NRVO, 如果有casting, 繼承等等(e.g. 回傳child object,但function return type是parent class)就不會有RVO。
+5. 如果有branch condition且兩個return statement回傳不同的object, 沒有RVO (如果是return 相同object, 就有RVO)
+
+
+```
+class1 func3() {    // No RVO
+    if(cond)    return a;
+    if(cond)    return b;
+}
+
+class1 func4() {    // No RVO
+    if(cond) {
+        auto x1 = class1();
+        return x1;
+    }
+    else {
+        auto x1 = class1();
+        return x1;
+    }
+}
+
+class1 func5() {    // has RVO
+    x1 = class1();
+    if(cond) {
+        x1.a = 5;
+        return x1;
+    }
+    else {
+        x1.a = 3;
+        return x1;
+    }
+}
+```
+
+Reference: 
+
+[cppcon](https://www.youtube.com/watch?v=WyxUilrR6fU)

@@ -64,7 +64,13 @@ BIOS做的事情就是驗證硬體(e.g. CPU, timer, DMA, MMU), 這個步驟稱�
 
 在嵌入式系統中，沒有分兩步驟，直接bootloader就把一切做完。可能是因為嵌入式的架構相對單純，不需要設計成兩步驟。
 
-bootloader的工作則是去把找bootImage, 通常bootImage會包含一個rootfs跟一個Linux kernel, bootloader會把他們load進memory並bring-up
+bootloader的工作主要就是把RAM controller setup以及把kernel跑起來。kernel跑起來就是去找bootImage, 通常bootImage會包含一個rootfs跟一個Linux kernel, bootloader會把他們load進memory並bring-up。
+
+Embedded system的boot流程:<br />
+1. 開機, 跑SOC上的ROM code (為廠商寫死在裡面)
+2. ROM code把SPL (Secondary program loader)放倒SRAM裡
+3. 執行SPL，並設定RAM controller，把TPL(Tertiary Program Loader)放到DRAM裡
+4. 接著就是把Kernel, file system放到RAM裡並開始執行
 
 **uboot**<br />
 
@@ -78,6 +84,29 @@ Reference:<br />
 - [uboot vs grub](https://www.linkedin.com/pulse/unleashing-gatekeepers-u-boot-vs-grub-embedded-mudduluru-ry9ze/)
 - [linux讀書會](https://hackmd.io/@combo-tw/Linux-%E8%AE%80%E6%9B%B8%E6%9C%83/%2F%40combo-tw%2FByYcRZjMr)
 - [BIOS and bootloader](https://silverwind1982.pixnet.net/blog/post/358594004)
+
+**initrd**:<br />
+
+為initRamdisk這個步驟中的binary, 只是現在被initramfs取代。主要bootstrap時，協助kernel mount rootfs的一個binary。
+現今系統的複雜, rootfs所在的儲存裝置可能很複雜，可能是複雜的SCSI裝置、RAID裝置、甚至NFS等等在遠端的硬碟。
+
+一開始kernel時沒有足夠的driver來幫助mount rootfs, 所以<br />
+1. boot loader會先把kernel, initrd載到RAM，initrd所在的記憶體位置被kernel對應為/dev/RAM0。
+2. 此時kernel會建立一個tmpfs(暫時性rootfs)，把它掛載到/dev/RAM0
+3. kernel執行rootfs上面的linuxrc
+4. linuxrc就會把需要的driver load進來以及一些額外的process/binary。最終在把掌控權還給kernel，讓kernel能夠 mount rootfs。
+5. 執行全還給kernel，讓他來mount rootfs
+
+initrd的步驟可以幫kernel瘦身並且做更好的模組化，否則把mount rootfs的工作也放在kernel內將會使kernel的codebase變得更大更複雜，甚至也很難做到擴充性，支援不同的rootfs storage。
+
+initrd的問題:  initrd本質上是一個block device。實際上就是不斷對檔案/dev/RAM0一直做操作，而檔案操作就是不斷將他對應到記憶體位置，因此做了不必要的資源消耗。
+
+initramfs就是改良把它變成是一個檔案，並且嵌入在kernel裡面，這樣不但跟kernel是分開模組化的，而且kernel還能直接把它unpack放到memory裡，不用再特地有一個file system來存取initrd的東西。
+
+
+Reference:<br />
+[csdn什麼是initrd](https://blog.csdn.net/weixin_45264425/article/details/12910771)<br />
+[jserv, initrd and initramfs](https://xstarcd.github.io/wiki/Linux/ShengRuLiJie_linux_2.6_initramfs.html)
 
 **root filesystem**<br />
 
