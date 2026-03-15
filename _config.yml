@@ -64,6 +64,7 @@ google_analytics: 'G-JV5E3S2E7S'
 collections: [sections]
 
 year:
+  - "2026"
   - "2025"
   - "2024"
   - "2023"
